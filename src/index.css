@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+/* Tailwind v4: Dark mode variant */
+@variant dark (&:where(.dark, .dark *));
+
+/* Swift Line Brand Design Tokens */
+@theme {
+  --color-brand-blue: #0F2C59;
+  --color-brand-dark: #0A1E3F;
+  --color-brand-orange: #FF6B00;
+  --color-brand-orange-hover: #E05D00;
+
+  --font-family-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-family-display: "Space Grotesk", "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+:root {
+  --color-bg: #F8FAFC;
+  --color-text: #0F172A;
+}
+
+:root.dark {
+  --color-bg: #0B0F19;
+  --color-text: #F8FAFC;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================================
+   GLASSMORPHISM PANEL
+============================================================ */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .glass-panel {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ============================================================
+   HERO SECTION — SOLID COLORS (NO GRADIENTS)
+============================================================ */
+.hero-slide-1 { background-color: #0F2C59; }
+.hero-slide-2 { background-color: #0B132B; }
+.hero-slide-3 { background-color: #1C2541; }
+
+/* ============================================================
+   ANIMATIONS
+============================================================ */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(1.01);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-slide {
+  animation: slideIn 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 12px rgba(255, 107, 0, 0.35); }
+  50%       { box-shadow: 0 0 28px rgba(255, 107, 0, 0.75); }
+}
+
+.glow-orange {
+  animation: pulseGlow 2.5s ease-in-out infinite;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.6s ease forwards;
+}
+
+/* ============================================================
+   BARCODE VISUAL
+============================================================ */
+.barcode-lines {
+  background: repeating-linear-gradient(
+    90deg,
+    #000 0px,
+    #000 2px,
+    #fff 2px,
+    #fff 4px,
+    #000 4px,
+    #000 8px,
+    #fff 8px,
+    #fff 9px
+  );
+}
+
+/* ============================================================
+   CUSTOM SCROLLBAR
+============================================================ */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: #f1f5f9; }
+::-webkit-scrollbar-thumb  { background: #cbd5e1; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #FF6B00; }
+
+.dark ::-webkit-scrollbar-track { background: #0f172a; }
+.dark ::-webkit-scrollbar-thumb { background: #334155; }
+
+/* ============================================================
+   PRINT STYLES — For Label & Receipt generation
+============================================================ */
+@media print {
+  body > *:not(.print-target) { display: none !important; }
+  .print-target { display: block !important; }
+  .no-print { display: none !important; }
+}
