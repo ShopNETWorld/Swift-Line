@@ -73,10 +73,6 @@ export default function ContactPage() {
                 </div>
               </div>
             </div>
-
-            <div className="pt-6 border-t border-slate-700/60 text-xs text-slate-300">
-              URL: <a href="https://myswiftline.com" className="text-[#FF6B00] underline font-bold">https://myswiftline.com</a>
-            </div>
           </div>
 
           {/* Form */}

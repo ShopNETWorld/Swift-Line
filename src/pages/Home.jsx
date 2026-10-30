@@ -114,7 +114,7 @@ export default function Home({ lang = 'en' }) {
 
       {/* 8. FOOTER */}
       <footer className="bg-[#0F2C59] text-white pt-16 pb-8 border-t-4 border-[#FF6B00]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-8">
           
           <div className="space-y-4">
             <div className="font-extrabold text-2xl font-display">
@@ -148,15 +148,6 @@ export default function Home({ lang = 'en' }) {
               <li>Aramex Global</li>
               <li>Maersk Line</li>
             </ul>
-          </div>
-
-          <div>
-            <h4 className="font-bold text-sm text-white mb-3">{t.securityCompliance}</h4>
-            <div className="space-y-2 text-xs text-slate-300">
-              <p className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-emerald-400" /> {t.securityActive}</p>
-              <p className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-emerald-400" /> RBAC Role-Based Security</p>
-              <p className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-emerald-400" /> SMTP TLS Email Dispatch</p>
-            </div>
           </div>
 
         </div>

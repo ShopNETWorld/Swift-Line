@@ -65,12 +65,6 @@ export default function Header({ theme, toggleTheme, lang, setLang, user, onLogo
         {/* Right Tools & CTA Button */}
         <div className="hidden lg:flex items-center space-x-4">
           
-          {/* Security Badge */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold" title="Bot & DDoS Shield Enabled">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Shield Active</span>
-          </div>
-
           {/* Language Selector */}
           <div className="relative flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg px-2 py-1 text-xs font-semibold">
             <Globe className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />

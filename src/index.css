@@ -126,10 +126,63 @@ body {
 .dark ::-webkit-scrollbar-thumb { background: #334155; }
 
 /* ============================================================
-   PRINT STYLES — For Label & Receipt generation
+   PRINT STYLES — For Shipping Label & Receipt Generation
 ============================================================ */
 @media print {
-  body > *:not(.print-target) { display: none !important; }
-  .print-target { display: block !important; }
-  .no-print { display: none !important; }
+  /* Ensure backgrounds and borders render in print */
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Reset body and hide web layout chrome */
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  header, footer, nav, aside, .no-print {
+    display: none !important;
+  }
+
+  /* Unset fixed modal wrapper in print mode */
+  .print-modal-overlay {
+    position: static !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    width: auto !important;
+    inset: auto !important;
+  }
+
+  .print-modal-card {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    border-radius: 0 !important;
+  }
+
+  .print-controls-bar,
+  .print-footer-bar {
+    display: none !important;
+  }
+
+  .printable-area {
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    border: 2px solid #000000 !important;
+  }
 }
