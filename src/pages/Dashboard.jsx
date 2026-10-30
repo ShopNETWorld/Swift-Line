@@ -146,16 +146,27 @@ export default function Dashboard({ lang = 'en', user, onLogin, onLogout }) {
       const res = await apiFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail, password: loginPassword })
+        body: JSON.stringify({
+          email: (loginEmail || '').trim(),
+          password: (loginPassword || '').trim()
+        })
       });
-      const data = await res.json();
+
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        setLoginError(`Server returned status ${res.status}. Please check backend logs or /api/health.`);
+        return;
+      }
+
       if (res.ok) {
         onLogin(data.user, data.token);
       } else {
-        setLoginError(data.error || 'Login failed');
+        setLoginError(data.error || 'Login failed. Please check credentials.');
       }
     } catch (err) {
-      setLoginError('Unable to connect to server');
+      setLoginError('Unable to connect to server. Please check your network or server status.');
     } finally {
       setLoginLoading(false);
     }

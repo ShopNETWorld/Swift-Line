@@ -26,9 +26,16 @@ function safeUser(u) {
 
 // ─── 1. POST /api/auth/login ─────────────────────────────────────────────────
 router.post('/login', authLimiter, async (req, res) => {
-  const { email, password } = req.body;
+  const email = (req.body?.email || '').trim().toLowerCase();
+  const password = (req.body?.password || '').trim();
+
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' });
+  }
+
+  if (!supabase) {
+    console.error('CRITICAL: Supabase client is not initialized');
+    return res.status(500).json({ error: 'Database connection error. Please verify Supabase credentials.' });
   }
 
   const { data: users, error } = await supabase
@@ -37,7 +44,12 @@ router.post('/login', authLimiter, async (req, res) => {
     .ilike('email', email)
     .limit(1);
 
-  if (error || !users || users.length === 0) {
+  if (error) {
+    console.error('Supabase query error during login:', error);
+    return res.status(500).json({ error: `Database error: ${error.message || 'Unable to query users table'}` });
+  }
+
+  if (!users || users.length === 0) {
     logSecurityEvent('FAILED_LOGIN_UNKNOWN_EMAIL', req, `Email: ${email}`);
     return res.status(401).json({ error: 'Invalid email or password' });
   }
