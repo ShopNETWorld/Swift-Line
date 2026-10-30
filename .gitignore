@@ -20,3 +20,7 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+
+# Local JSON database (demo fallback)
+server/db/local_data.json
+

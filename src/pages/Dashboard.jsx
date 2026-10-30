@@ -460,33 +460,35 @@ export default function Dashboard({ lang = 'en', user, onLogin, onLogout }) {
             </p>
           </div>
 
-          {/* Quick Demo Pre-fill Buttons */}
-          <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase block text-center">Quick Demo Login Selector:</span>
-            <div className="grid grid-cols-3 gap-1.5 text-[11px] font-bold">
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('superadmin')}
-                className="py-1.5 px-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700"
-              >
-                Super Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('admin')}
-                className="py-1.5 px-2 rounded-lg bg-[#0F2C59] text-white hover:bg-slate-800"
-              >
-                Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('client')}
-                className="py-1.5 px-2 rounded-lg bg-[#FF6B00] text-white hover:bg-[#E05D00]"
-              >
-                Client
-              </button>
+          {/* Quick Demo Pre-fill Buttons — hidden in production */}
+          {!import.meta.env.PROD && (
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block text-center">Quick Demo Login Selector:</span>
+              <div className="grid grid-cols-3 gap-1.5 text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin('superadmin')}
+                  className="py-1.5 px-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700"
+                >
+                  Super Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin('admin')}
+                  className="py-1.5 px-2 rounded-lg bg-[#0F2C59] text-white hover:bg-slate-800"
+                >
+                  Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin('client')}
+                  className="py-1.5 px-2 rounded-lg bg-[#FF6B00] text-white hover:bg-[#E05D00]"
+                >
+                  Client
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {loginError && (
             <div className="p-3 rounded-xl bg-red-50 text-red-600 text-xs font-semibold flex items-center gap-2">
