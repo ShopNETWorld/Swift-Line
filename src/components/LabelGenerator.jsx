@@ -1,16 +1,21 @@
 import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Printer, X, Barcode, CheckCircle } from 'lucide-react';
 
 export default function LabelGenerator({ shipment, onClose }) {
   const printRef = useRef(null);
 
-  // Close on Escape key press
+  // Close on Escape key press and manage print-modal-open class on body
   useEffect(() => {
+    document.body.classList.add('print-modal-open');
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.classList.remove('print-modal-open');
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [onClose]);
 
   if (!shipment) return null;
@@ -19,44 +24,34 @@ export default function LabelGenerator({ shipment, onClose }) {
     window.print();
   };
 
-  return (
+  const modalContent = (
     <div
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto print-modal-overlay"
     >
-      <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 my-6 print-modal-card">
+      <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 my-6 print-modal-card flex flex-col max-h-[92vh]">
         
-        {/* Sticky Header with Prominent Close & Print Buttons */}
-        <div className="sticky top-0 z-20 bg-[#0F2C59] text-white px-5 py-3.5 flex items-center justify-between border-b border-slate-700 shadow-sm print-controls-bar">
+        {/* Header with Title and Prominent Close Button */}
+        <div className="flex-shrink-0 bg-[#0F2C59] text-white px-5 py-3.5 flex items-center justify-between border-b border-slate-700 shadow-sm print-controls-bar">
           <div className="flex items-center gap-2">
             <Barcode className="w-5 h-5 text-[#FF6B00]" />
-            <h3 className="font-bold text-sm">Shipping Label</h3>
+            <h3 className="font-bold text-sm">Shipping Label Preview</h3>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="px-3 py-1.5 rounded-lg bg-[#FF6B00] hover:bg-[#E05D00] text-white text-xs font-bold flex items-center gap-1.5 shadow transition-all"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Print Label</span>
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1 shadow transition-all"
-              title="Close"
-            >
-              <X className="w-4 h-4" />
-              <span>Close</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1 shadow transition-all cursor-pointer"
+            title="Close"
+          >
+            <X className="w-4 h-4" />
+            <span>Close</span>
+          </button>
         </div>
 
         {/* Printable ISO Standard Shipping Label Container */}
-        <div className="p-6 overflow-x-auto flex justify-center bg-slate-100 dark:bg-slate-950/80 print:p-0 print:bg-white">
+        <div className="flex-1 p-6 overflow-y-auto overflow-x-auto flex justify-center bg-slate-100 dark:bg-slate-950/80 print:p-0 print:bg-white">
           
           <div
             ref={printRef}
@@ -174,26 +169,28 @@ export default function LabelGenerator({ shipment, onClose }) {
 
         </div>
 
-        {/* Bottom Footer Bar with Explicit Cancel Button */}
-        <div className="bg-slate-50 dark:bg-slate-800 px-5 py-3 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end gap-3 print-footer-bar">
+        {/* Bottom Footer Bar with Prominent Print Button for Easy Access */}
+        <div className="flex-shrink-0 bg-slate-50 dark:bg-slate-800 px-5 py-3.5 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 print-footer-bar">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all"
+            className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer"
           >
             Cancel / Close
           </button>
           <button
             type="button"
             onClick={handlePrint}
-            className="px-4 py-2 rounded-xl bg-[#FF6B00] hover:bg-[#E05D00] text-white text-xs font-bold flex items-center gap-1.5 shadow transition-all"
+            className="px-6 py-2.5 rounded-xl bg-[#FF6B00] hover:bg-[#E05D00] active:scale-95 text-white text-sm font-bold flex items-center gap-2 shadow-lg hover:shadow-orange-500/20 transition-all cursor-pointer"
           >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Print 4x6" Label</span>
+            <Printer className="w-4 h-4" />
+            <span>Print Label</span>
           </button>
         </div>
 
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

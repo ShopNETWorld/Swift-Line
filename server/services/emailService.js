@@ -36,8 +36,9 @@ export async function sendEmail({ to, subject, html, text }) {
 
   if (transporter) {
     try {
+      const senderAddress = process.env.SMTP_USER || 'support@myswiftline.com';
       const info = await transporter.sendMail({
-        from: '"Swift Line Courier" <notifications@myswiftline.com>',
+        from: `"Swift Line Courier" <${senderAddress}>`,
         to,
         subject,
         text: text || html.replace(/<[^>]*>?/gm, ''),

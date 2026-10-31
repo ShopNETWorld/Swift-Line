@@ -1,6 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import WebSocket from 'ws';
+import dns from 'dns';
+
+// Force IPv4 first to prevent 60s+ DNS timeout hangs on Windows/Node fetch
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch (_) {}
 
 // Ensure WebSocket is available for Supabase Realtime in Node < 22
 if (!globalThis.WebSocket) {

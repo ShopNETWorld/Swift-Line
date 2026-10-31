@@ -103,7 +103,7 @@ export default function AIChatWidget() {
   return (
     <>
       {/* Floating Chat Trigger Button */}
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className="fixed bottom-6 right-6 z-50 print:hidden no-print">
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="relative p-4 rounded-2xl bg-[#0F2C59] text-white shadow-2xl hover:bg-[#1E40AF] transition-all transform hover:scale-105 active:scale-95 border-2 border-[#FF6B00] glow-orange flex items-center gap-2 group"

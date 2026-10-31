@@ -1,4 +1,10 @@
 import 'dotenv/config';
+import dns from 'dns';
+
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch (_) {}
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -20,10 +26,12 @@ const PORT = process.env.PORT || 5000;
 
 // ─── CORS: allow Vercel frontend + localhost dev ──────────────────────────────
 const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:3000',
-  'http://localhost:5173',
+  process.env.FRONTEND_URL,
   'http://localhost:3000',
-];
+  'http://localhost:5173',
+  'http://localhost:4173',
+].filter(Boolean);
+
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, Postman, Railway health checks)
@@ -31,7 +39,12 @@ app.use(cors({
     if (allowedOrigins.some(o => origin.startsWith(o.replace(/\/$/, '')))) {
       return callback(null, true);
     }
-    callback(new Error(`CORS: Origin ${origin} not allowed`));
+    // Allow any localhost origin during local development
+    if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+      return callback(null, true);
+    }
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
+    return callback(null, true);
   },
   credentials: true
 }));

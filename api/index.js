@@ -4,6 +4,12 @@
  * Handles all /api/* requests on Vercel serverless.
  */
 import 'dotenv/config';
+import dns from 'dns';
+
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch (_) {}
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
