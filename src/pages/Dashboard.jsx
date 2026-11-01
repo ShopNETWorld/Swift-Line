@@ -13,11 +13,29 @@ import { apiFetch } from '../utils/api.js';
 export default function Dashboard({ lang = 'en', user, onLogin, onLogout }) {
   const t = translations[lang] || translations.en;
 
-  // Login Form States
+  // Login & Auth Form States
+  const [authMode, setAuthMode] = useState('login'); // 'login' | 'signup' | 'forgot'
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+
+  // Sign Up Form States
+  const [signupForm, setSignupForm] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    phone: '',
+    country: 'United States'
+  });
+  const [signupLoading, setSignupLoading] = useState(false);
+  const [signupError, setSignupError] = useState('');
+
+  // Forgot Password Form States
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotMessage, setForgotMessage] = useState('');
+  const [forgotError, setForgotError] = useState('');
 
   // Active Tab
   // 'shipments', 'users', 'settings', 'security', 'new_shipment'
@@ -169,6 +187,79 @@ export default function Dashboard({ lang = 'en', user, onLogin, onLogout }) {
       setLoginError('Unable to connect to server. Please check your network or server status.');
     } finally {
       setLoginLoading(false);
+    }
+  };
+
+  // Sign Up Submit
+  const handleSignupSubmit = async (e) => {
+    e.preventDefault();
+    setSignupError('');
+    setSignupLoading(true);
+    try {
+      const res = await apiFetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: (signupForm.fullName || '').trim(),
+          email: (signupForm.email || '').trim().toLowerCase(),
+          password: signupForm.password,
+          phone: (signupForm.phone || '').trim(),
+          country: (signupForm.country || '').trim()
+        })
+      });
+
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (err) {
+        setSignupError('Server returned invalid response. Please try again.');
+        return;
+      }
+
+      if (res.ok) {
+        onLogin(data.user, data.token);
+      } else {
+        setSignupError(data.error || 'Failed to create account. Please check the details.');
+      }
+    } catch (err) {
+      setSignupError('Unable to connect to server. Please check your network.');
+    } finally {
+      setSignupLoading(false);
+    }
+  };
+
+  // Forgot Password Submit
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotMessage('');
+    setForgotLoading(true);
+    try {
+      const res = await apiFetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: (forgotEmail || '').trim().toLowerCase()
+        })
+      });
+
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (err) {
+        setForgotError('Server returned invalid response. Please try again.');
+        return;
+      }
+
+      if (res.ok) {
+        setForgotMessage(data.message || 'If an account is associated with this email, temporary login credentials have been dispatched.');
+      } else {
+        setForgotError(data.error || 'Failed to process request.');
+      }
+    } catch (err) {
+      setForgotError('Unable to connect to server. Please try again.');
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -453,7 +544,7 @@ export default function Dashboard({ lang = 'en', user, onLogin, onLogout }) {
   // List of all admins in the system (for assignment dropdown)
   const adminOptions = usersList.filter(u => ['admin', 'superadmin'].includes(u.role));
 
-  // IF NOT LOGGED IN -> RENDER LOGIN PORTAL
+  // IF NOT LOGGED IN -> RENDER LOGIN / SIGN UP / FORGOT PASSWORD PORTAL
   if (!user) {
     return (
       <div className="pt-24 pb-16 min-h-[85vh] flex items-center justify-center px-4">
@@ -464,15 +555,19 @@ export default function Dashboard({ lang = 'en', user, onLogin, onLogout }) {
               <Lock className="w-7 h-7" />
             </div>
             <h2 className="text-2xl font-extrabold text-[#0F2C59] dark:text-white font-display">
-              Swift Line Portal Login
+              {authMode === 'login' && 'Swift Line Portal Login'}
+              {authMode === 'signup' && 'Create Client Account'}
+              {authMode === 'forgot' && 'Reset Portal Password'}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Access your role-based logistics dashboard. Secure TLS encrypted.
+              {authMode === 'login' && 'Access your role-based logistics dashboard. Secure TLS encrypted.'}
+              {authMode === 'signup' && 'Register for instant real-time shipment booking and live GPS tracking.'}
+              {authMode === 'forgot' && 'Enter your registered email to receive temporary login credentials.'}
             </p>
           </div>
 
-          {/* Quick Demo Pre-fill Buttons — hidden in production */}
-          {!import.meta.env.PROD && (
+          {/* Quick Demo Pre-fill Buttons — hidden in production & only on login */}
+          {!import.meta.env.PROD && authMode === 'login' && (
             <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
               <span className="text-[10px] font-bold text-slate-400 uppercase block text-center">Quick Demo Login Selector:</span>
               <div className="grid grid-cols-3 gap-1.5 text-[11px] font-bold">
@@ -501,47 +596,221 @@ export default function Dashboard({ lang = 'en', user, onLogin, onLogout }) {
             </div>
           )}
 
-          {loginError && (
-            <div className="p-3 rounded-xl bg-red-50 text-red-600 text-xs font-semibold flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{loginError}</span>
-            </div>
+          {/* ── 1. SIGN IN FORM ────────────────────────────────────────── */}
+          {authMode === 'login' && (
+            <>
+              {loginError && (
+                <div className="p-3 rounded-xl bg-red-50 text-red-600 text-xs font-semibold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{loginError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleLoginSubmit} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="email@myswiftline.com"
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-[#FF6B00] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Password</label>
+                    <button
+                      type="button"
+                      onClick={() => { setAuthMode('forgot'); setLoginError(''); }}
+                      className="text-[11px] text-[#FF6B00] hover:underline font-bold cursor-pointer"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+                  <input
+                    type="password"
+                    required
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-[#FF6B00] focus:outline-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loginLoading}
+                  className="w-full py-3.5 rounded-xl bg-[#FF6B00] hover:bg-[#E05D00] text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>{loginLoading ? 'Authenticating...' : 'Secure Sign In'}</span>
+                </button>
+              </form>
+
+              <div className="text-center pt-2 border-t border-slate-100 dark:border-slate-800">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Don't have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => { setAuthMode('signup'); setLoginError(''); }}
+                    className="text-[#FF6B00] font-bold hover:underline cursor-pointer"
+                  >
+                    Sign Up
+                  </button>
+                </p>
+              </div>
+            </>
           )}
 
-          <form onSubmit={handleLoginSubmit} className="space-y-4">
-            <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Email Address</label>
-              <input
-                type="email"
-                required
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="email@myswiftline.com"
-                className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-[#FF6B00] focus:outline-none"
-              />
-            </div>
+          {/* ── 2. SIGN UP FORM ────────────────────────────────────────── */}
+          {authMode === 'signup' && (
+            <>
+              {signupError && (
+                <div className="p-3 rounded-xl bg-red-50 text-red-600 text-xs font-semibold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{signupError}</span>
+                </div>
+              )}
 
-            <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Password</label>
-              <input
-                type="password"
-                required
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-[#FF6B00] focus:outline-none"
-              />
-            </div>
+              <form onSubmit={handleSignupSubmit} className="space-y-3.5">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={signupForm.fullName}
+                    onChange={(e) => setSignupForm({ ...signupForm, fullName: e.target.value })}
+                    placeholder="e.g. John Doe"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-[#FF6B00] focus:outline-none"
+                  />
+                </div>
 
-            <button
-              type="submit"
-              disabled={loginLoading}
-              className="w-full py-3.5 rounded-xl bg-[#FF6B00] hover:bg-[#E05D00] text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
-            >
-              <ShieldCheck className="w-4 h-4" />
-              <span>{loginLoading ? 'Authenticating...' : 'Secure Sign In'}</span>
-            </button>
-          </form>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={signupForm.email}
+                    onChange={(e) => setSignupForm({ ...signupForm, email: e.target.value })}
+                    placeholder="you@company.com"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-[#FF6B00] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={signupForm.password}
+                    onChange={(e) => setSignupForm({ ...signupForm, password: e.target.value })}
+                    placeholder="At least 6 characters"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-[#FF6B00] focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Phone (Optional)</label>
+                    <input
+                      type="text"
+                      value={signupForm.phone}
+                      onChange={(e) => setSignupForm({ ...signupForm, phone: e.target.value })}
+                      placeholder="+1 (555) 000-0000"
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-[#FF6B00] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Country</label>
+                    <input
+                      type="text"
+                      value={signupForm.country}
+                      onChange={(e) => setSignupForm({ ...signupForm, country: e.target.value })}
+                      placeholder="United States"
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-[#FF6B00] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={signupLoading}
+                  className="w-full py-3.5 mt-2 rounded-xl bg-[#FF6B00] hover:bg-[#E05D00] text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>{signupLoading ? 'Creating Account...' : 'Create Account'}</span>
+                </button>
+              </form>
+
+              <div className="text-center pt-2 border-t border-slate-100 dark:border-slate-800">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Already have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => { setAuthMode('login'); setSignupError(''); }}
+                    className="text-[#FF6B00] font-bold hover:underline cursor-pointer"
+                  >
+                    Sign In
+                  </button>
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* ── 3. FORGOT PASSWORD FORM ────────────────────────────────── */}
+          {authMode === 'forgot' && (
+            <>
+              {forgotError && (
+                <div className="p-3 rounded-xl bg-red-50 text-red-600 text-xs font-semibold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{forgotError}</span>
+                </div>
+              )}
+
+              {forgotMessage && (
+                <div className="p-3.5 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-semibold flex items-start gap-2 border border-emerald-200">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>{forgotMessage}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleForgotSubmit} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Registered Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="email@myswiftline.com"
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-[#FF6B00] focus:outline-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={forgotLoading}
+                  className="w-full py-3.5 rounded-xl bg-[#FF6B00] hover:bg-[#E05D00] text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Key className="w-4 h-4" />
+                  <span>{forgotLoading ? 'Sending Credentials...' : 'Send Reset Instructions'}</span>
+                </button>
+              </form>
+
+              <div className="text-center pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('login'); setForgotError(''); setForgotMessage(''); }}
+                  className="text-xs text-[#0F2C59] dark:text-slate-300 font-bold hover:text-[#FF6B00] dark:hover:text-[#FF6B00] cursor-pointer"
+                >
+                  ← Back to Sign In
+                </button>
+              </div>
+            </>
+          )}
 
         </div>
       </div>
