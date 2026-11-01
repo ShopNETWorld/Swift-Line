@@ -72,25 +72,38 @@ export default function Dashboard({ lang = 'en', user, onLogin, onLogout }) {
     assignedAdminId: ''
   });
 
-  // New Shipment Booking Form
+  // New Shipment Booking Form — defaults to logged-in client's credentials
   const [newShipmentForm, setNewShipmentForm] = useState({
-    sender_name: 'Apex Global Trading',
-    sender_email: user?.email || 'client@myswiftline.com',
-    sender_phone: '+1 (212) 555-0144',
-    sender_address: '742 Fifth Avenue, Suite 12',
-    sender_country: 'United States',
-    recipient_name: 'Tokyo Luxury Boutique',
-    recipient_email: 'orders@tokyolux.jp',
-    recipient_phone: '+81 3 5555 0123',
-    recipient_address: '5-7-1 Ginza, Chuo-ku',
-    recipient_country: 'Japan',
+    sender_name: user?.fullName || '',
+    sender_email: user?.email || '',
+    sender_phone: user?.phone || '',
+    sender_address: '',
+    sender_country: user?.country || 'United States',
+    recipient_name: '',
+    recipient_email: '',
+    recipient_phone: '',
+    recipient_address: '',
+    recipient_country: 'United States',
     courier_partner: 'Swift Line Express',
     service_type: 'EXPRESS_AIR',
-    weight_kg: 4.5,
+    weight_kg: 1.0,
     dimensions_cm: '30x20x15',
-    declared_value_usd: 500,
-    notes: 'Fragile handling required.'
+    declared_value_usd: 100,
+    notes: ''
   });
+
+  // Keep sender fields synchronized with logged-in user's profile
+  useEffect(() => {
+    if (user?.email) {
+      setNewShipmentForm(prev => ({
+        ...prev,
+        sender_email: user.email,
+        sender_name: prev.sender_name || user.fullName || '',
+        sender_phone: prev.sender_phone || user.phone || '',
+        sender_country: prev.sender_country || user.country || 'United States'
+      }));
+    }
+  }, [user]);
 
   const token = localStorage.getItem('swift_token');
 
@@ -326,6 +339,24 @@ export default function Dashboard({ lang = 'en', user, onLogin, onLogout }) {
       const data = await res.json();
       if (res.ok) {
         flashMessage(`Shipment created successfully: ${data.shipment.tracking_number}`);
+        setNewShipmentForm({
+          sender_name: user?.fullName || '',
+          sender_email: user?.email || '',
+          sender_phone: user?.phone || '',
+          sender_address: '',
+          sender_country: user?.country || 'United States',
+          recipient_name: '',
+          recipient_email: '',
+          recipient_phone: '',
+          recipient_address: '',
+          recipient_country: 'United States',
+          courier_partner: 'Swift Line Express',
+          service_type: 'EXPRESS_AIR',
+          weight_kg: 1.0,
+          dimensions_cm: '30x20x15',
+          declared_value_usd: 100,
+          notes: ''
+        });
         setActiveTab('shipments');
         loadDashboardData();
       } else {

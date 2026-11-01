@@ -1,7 +1,7 @@
 import express from 'express';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import supabase from '../db/supabaseClient.js';
-import { sendEmail, buildTrackingStatusEmail } from '../services/emailService.js';
+import { sendEmail, buildTrackingStatusEmail, sendShipmentNotification } from '../services/emailService.js';
 import { logSecurityEvent } from '../middleware/security.js';
 
 const router = express.Router();
@@ -163,10 +163,9 @@ router.post('/', authenticateToken, async (req, res) => {
 
   logSecurityEvent('SHIPMENT_CREATED', req, `Tracking: ${tracking_number}`);
 
-  if (recipient_email || sender_email) {
-    const emailData = buildTrackingStatusEmail(newShipment, 'ORDER_CREATED', newShipment.current_location);
-    sendEmail(emailData).catch(err => console.error('Email error:', err));
-  }
+  // Dispatch email alerts to BOTH sender and recipient
+  sendShipmentNotification(newShipment, 'ORDER_CREATED', newShipment.current_location)
+    .catch(err => console.error('Shipment notification email error:', err));
 
   res.status(201).json({ message: 'Shipment created successfully', shipment: newShipment });
 });
@@ -238,8 +237,9 @@ router.put('/:id/status', authenticateToken, requireRole('admin', 'superadmin'),
 
   logSecurityEvent('SHIPMENT_STATUS_UPDATED', req, `Tracking: ${shipment.tracking_number} → ${status}`);
 
-  const emailData = buildTrackingStatusEmail(updatedShipment, updatedShipment.status, updatedShipment.current_location);
-  sendEmail(emailData).catch(err => console.error('Email error:', err));
+  // Dispatch status update email to both sender and recipient
+  sendShipmentNotification(updatedShipment, updatedShipment.status, updatedShipment.current_location)
+    .catch(err => console.error('Status update notification email error:', err));
 
   res.json({ message: 'Shipment status updated & email alert dispatched', shipment: updatedShipment });
 });
