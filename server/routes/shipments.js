@@ -164,7 +164,7 @@ router.post('/', authenticateToken, async (req, res) => {
   logSecurityEvent('SHIPMENT_CREATED', req, `Tracking: ${tracking_number}`);
 
   // Dispatch email alerts to BOTH sender and recipient
-  sendShipmentNotification(newShipment, 'ORDER_CREATED', newShipment.current_location)
+  sendShipmentNotification(newShipment, 'ORDER_CREATED', newShipment.current_location, notes)
     .catch(err => console.error('Shipment notification email error:', err));
 
   res.status(201).json({ message: 'Shipment created successfully', shipment: newShipment });
@@ -237,8 +237,8 @@ router.put('/:id/status', authenticateToken, requireRole('admin', 'superadmin'),
 
   logSecurityEvent('SHIPMENT_STATUS_UPDATED', req, `Tracking: ${shipment.tracking_number} → ${status}`);
 
-  // Dispatch status update email to both sender and recipient
-  sendShipmentNotification(updatedShipment, updatedShipment.status, updatedShipment.current_location)
+  // Dispatch status update email to both sender and recipient (including scan remarks)
+  sendShipmentNotification(updatedShipment, updatedShipment.status, updatedShipment.current_location, description)
     .catch(err => console.error('Status update notification email error:', err));
 
   res.json({ message: 'Shipment status updated & email alert dispatched', shipment: updatedShipment });
@@ -349,8 +349,8 @@ router.put('/:id', authenticateToken, requireRole('admin', 'superadmin'), async 
       performed_by: `${req.user.fullName} (${req.user.role})`
     }]);
 
-    // Send email alert on status change
-    sendShipmentNotification(updatedShipment, updatedShipment.status, updatedShipment.current_location)
+    // Send email alert on status change (including notes/remarks)
+    sendShipmentNotification(updatedShipment, updatedShipment.status, updatedShipment.current_location, notes || `Status updated to ${updates.status.replace(/_/g, ' ')} via admin editor`)
       .catch(err => console.error('Status update notification email error:', err));
   }
 

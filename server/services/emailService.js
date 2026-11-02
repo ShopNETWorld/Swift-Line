@@ -61,7 +61,7 @@ export async function sendEmail({ to, subject, html, text }) {
   return dispatchRecord;
 }
 
-export function buildTrackingStatusEmail(shipment, newStatus, location) {
+export function buildTrackingStatusEmail(shipment, newStatus, location, remarks = '') {
   return {
     to: shipment.recipient_email || shipment.sender_email,
     subject: `Swift Line Alert: Shipment ${shipment.tracking_number} - Status Updated to ${newStatus}`,
@@ -78,8 +78,9 @@ export function buildTrackingStatusEmail(shipment, newStatus, location) {
           
           <div style="background-color: #F8FAFC; padding: 16px; border-left: 4px solid #FF6B00; border-radius: 4px; margin: 20px 0;">
             <p style="margin: 0; font-size: 16px; font-weight: bold; color: #0F2C59;">Current Status: ${newStatus.replace('_', ' ')}</p>
-            <p style="margin: 4px 0 0 0; color: #64748B;">Location: ${location}</p>
-            <p style="margin: 4px 0 0 0; color: #64748B;">Courier: ${shipment.courier_partner || 'Swift Line Express'}</p>
+            <p style="margin: 4px 0 0 0; color: #64748B;">Location: ${location || 'In Transit Hub'}</p>
+            ${remarks ? `<p style="margin: 8px 0 0 0; color: #0F2C59; background-color: #FEF3C7; padding: 8px 12px; border-radius: 4px; border-left: 3px solid #FF6B00;"><strong>Scan Remarks:</strong> ${remarks}</p>` : ''}
+            <p style="margin: 6px 0 0 0; color: #64748B;">Courier: ${shipment.courier_partner || 'Swift Line Express'}</p>
           </div>
 
           <p>You can live track your package anytime at:</p>
@@ -93,7 +94,7 @@ export function buildTrackingStatusEmail(shipment, newStatus, location) {
   };
 }
 
-export async function sendShipmentNotification(shipment, newStatus, location) {
+export async function sendShipmentNotification(shipment, newStatus, location, remarks = '') {
   const recipients = [];
   if (shipment.sender_email) {
     recipients.push({ email: shipment.sender_email, name: shipment.sender_name, isSender: true });
@@ -126,8 +127,9 @@ export async function sendShipmentNotification(shipment, newStatus, location) {
               <p style="margin: 0; font-size: 16px; font-weight: bold; color: #0F2C59;">Tracking Number: <span style="color: #FF6B00;">${shipment.tracking_number}</span></p>
               <p style="margin: 6px 0 0 0; font-size: 13px; color: #475569;"><strong>Status:</strong> ${newStatus.replace('_', ' ')}</p>
               <p style="margin: 4px 0 0 0; font-size: 13px; color: #475569;"><strong>Location:</strong> ${location || 'In Transit Hub'}</p>
-              <p style="margin: 4px 0 0 0; font-size: 13px; color: #475569;"><strong>Carrier:</strong> ${shipment.courier_partner || 'Swift Line Express'}</p>
-              <p style="margin: 4px 0 0 0; font-size: 13px; color: #475569;"><strong>Route:</strong> ${shipment.sender_country || 'Origin'} ➔ ${shipment.recipient_country || 'Destination'}</p>
+              ${remarks ? `<p style="margin: 8px 0 0 0; font-size: 13px; color: #0F2C59; background-color: #FEF3C7; padding: 8px 12px; border-radius: 4px; border-left: 3px solid #FF6B00;"><strong>Scan Remarks:</strong> ${remarks}</p>` : ''}
+              <p style="margin: 6px 0 0 0; font-size: 13px; color: #475569;"><strong>Carrier:</strong> ${shipment.courier_partner || 'Swift Line Express'}</p>
+              <p style="margin: 4px 0 0 0; font-size: 13px; color: #475569;"><strong>Route:</strong> ${shipment.sender_country || shipment.origin || 'Origin'} ➔ ${shipment.recipient_country || shipment.destination || 'Destination'}</p>
               <p style="margin: 4px 0 0 0; font-size: 13px; color: #475569;"><strong>Package Weight:</strong> ${shipment.weight_kg || 1} kg</p>
               <p style="margin: 4px 0 0 0; font-size: 13px; color: #475569;"><strong>Declared Cargo Value:</strong> $${shipment.declared_value_usd || 100} USD</p>
             </div>

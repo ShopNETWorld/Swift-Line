@@ -2544,6 +2544,7 @@ export default function Dashboard({ lang = 'en', user, onLogin, onLogout }) {
                     placeholder="e.g. Customs released parcel. En route to Berlin distribution hub."
                     className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold"
                   />
+                  <p className="text-[10px] text-slate-400 mt-1">This remark will be recorded in the tracking history and included in the email sent to both sender and recipient.</p>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2">
