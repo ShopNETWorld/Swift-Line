@@ -244,6 +244,121 @@ router.put('/:id/status', authenticateToken, requireRole('admin', 'superadmin'),
   res.json({ message: 'Shipment status updated & email alert dispatched', shipment: updatedShipment });
 });
 
+// ─── 4b. PUT /api/shipments/:id (EDIT SHIPMENT DETAILS) ──────────────────────
+router.put('/:id', authenticateToken, requireRole('admin', 'superadmin'), async (req, res) => {
+  const { id } = req.params;
+
+  if (req.user.role === 'admin') {
+    const { data: dbUser } = await supabase.from('users').select('permissions').eq('id', req.user.id).single();
+    const hasPerm = dbUser?.permissions?.includes('manage_shipments') || dbUser?.permissions?.includes('*');
+    if (!hasPerm) return res.status(403).json({ error: 'Permission denied: Requires "manage_shipments" permission.' });
+  }
+
+  const { data: shipment, error: findErr } = await supabase
+    .from('shipments')
+    .select('*')
+    .or(`id.eq.${id},tracking_number.ilike.${id}`)
+    .single();
+
+  if (findErr || !shipment) return res.status(404).json({ error: 'Shipment not found' });
+
+  // Admin scoping check
+  if (req.user.role === 'admin') {
+    const { data: managedClients } = await supabase
+      .from('users')
+      .select('id, email')
+      .eq('role', 'client')
+      .or(`assigned_admin_id.eq.${req.user.id},created_by_user_id.eq.${req.user.id}`);
+
+    const managedClientIds = (managedClients || []).map(u => u.id);
+    const managedClientEmails = (managedClients || []).map(u => u.email.toLowerCase());
+
+    const isAuthorized =
+      shipment.assigned_admin_id === req.user.id ||
+      managedClientIds.includes(shipment.created_by_user_id) ||
+      managedClientEmails.includes(shipment.sender_email?.toLowerCase()) ||
+      managedClientEmails.includes(shipment.recipient_email?.toLowerCase());
+
+    if (!isAuthorized) {
+      return res.status(403).json({ error: 'Access denied: You are not assigned to manage this shipment.' });
+    }
+  }
+
+  const {
+    sender_name, sender_email, sender_phone, sender_address, sender_country,
+    recipient_name, recipient_email, recipient_phone, recipient_address, recipient_country,
+    courier_partner, service_type, weight_kg, dimensions_cm, declared_value_usd, shipping_cost_usd,
+    payment_status, status, current_location, origin, destination, estimated_delivery, notes
+  } = req.body;
+
+  const updates = { updated_at: new Date().toISOString() };
+
+  if (sender_name !== undefined) updates.sender_name = sender_name.trim();
+  if (sender_email !== undefined) updates.sender_email = sender_email.trim();
+  if (sender_phone !== undefined) updates.sender_phone = sender_phone.trim();
+  if (sender_address !== undefined) updates.sender_address = sender_address.trim();
+  if (sender_country !== undefined) {
+    updates.sender_country = sender_country.trim();
+    if (!origin) updates.origin = sender_country.trim();
+  }
+
+  if (recipient_name !== undefined) updates.recipient_name = recipient_name.trim();
+  if (recipient_email !== undefined) updates.recipient_email = recipient_email.trim();
+  if (recipient_phone !== undefined) updates.recipient_phone = recipient_phone.trim();
+  if (recipient_address !== undefined) updates.recipient_address = recipient_address.trim();
+  if (recipient_country !== undefined) {
+    updates.recipient_country = recipient_country.trim();
+    if (!destination) updates.destination = recipient_country.trim();
+  }
+
+  if (courier_partner !== undefined) updates.courier_partner = courier_partner.trim();
+  if (service_type !== undefined) updates.service_type = service_type.trim();
+  if (weight_kg !== undefined) updates.weight_kg = parseFloat(weight_kg) || shipment.weight_kg;
+  if (dimensions_cm !== undefined) updates.dimensions_cm = dimensions_cm.trim();
+  if (declared_value_usd !== undefined) updates.declared_value_usd = parseFloat(declared_value_usd) || shipment.declared_value_usd;
+  if (shipping_cost_usd !== undefined) updates.shipping_cost_usd = parseFloat(shipping_cost_usd) || shipment.shipping_cost_usd;
+  if (payment_status !== undefined) updates.payment_status = payment_status;
+  if (current_location !== undefined) updates.current_location = current_location.trim();
+  if (origin !== undefined) updates.origin = origin.trim();
+  if (destination !== undefined) updates.destination = destination.trim();
+  if (estimated_delivery !== undefined) updates.estimated_delivery = estimated_delivery;
+  if (notes !== undefined) updates.notes = notes.trim();
+
+  const statusChanged = status && status !== shipment.status;
+  if (status) updates.status = status;
+
+  const { data: updatedShipment, error: updateErr } = await supabase
+    .from('shipments')
+    .update(updates)
+    .eq('id', shipment.id)
+    .select()
+    .single();
+
+  if (updateErr) {
+    console.error('Update shipment error:', updateErr);
+    return res.status(500).json({ error: 'Failed to update shipment information.' });
+  }
+
+  if (statusChanged) {
+    await supabase.from('tracking_events').insert([{
+      shipment_id: shipment.id,
+      tracking_number: shipment.tracking_number,
+      status: updates.status,
+      location: updates.current_location || shipment.current_location,
+      description: `Shipment status updated to ${updates.status.replace(/_/g, ' ')} via admin editor.`,
+      performed_by: `${req.user.fullName} (${req.user.role})`
+    }]);
+
+    // Send email alert on status change
+    sendShipmentNotification(updatedShipment, updatedShipment.status, updatedShipment.current_location)
+      .catch(err => console.error('Status update notification email error:', err));
+  }
+
+  logSecurityEvent('SHIPMENT_UPDATED', req, `Tracking: ${shipment.tracking_number} edited by ${req.user.email}`);
+
+  res.json({ message: 'Shipment updated successfully', shipment: updatedShipment });
+});
+
 // ─── 5. DELETE /api/shipments/:id (SuperAdmin only) ─────────────────────────
 router.delete('/:id', authenticateToken, requireRole('superadmin'), async (req, res) => {
   const { id } = req.params;

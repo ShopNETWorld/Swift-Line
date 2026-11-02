@@ -72,6 +72,51 @@ export default function Dashboard({ lang = 'en', user, onLogin, onLogout }) {
     assignedAdminId: ''
   });
 
+  // Edit User Modal State
+  const [editUserModal, setEditUserModal] = useState(null);
+  const [editUserForm, setEditUserForm] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    companyName: '',
+    country: 'United States',
+    role: 'client',
+    isActive: true,
+    password: ''
+  });
+  const [editUserLoading, setEditUserLoading] = useState(false);
+  const [editUserError, setEditUserError] = useState('');
+
+  // Edit Shipment Modal State
+  const [editShipmentModal, setEditShipmentModal] = useState(null);
+  const [editShipmentForm, setEditShipmentForm] = useState({
+    sender_name: '',
+    sender_email: '',
+    sender_phone: '',
+    sender_address: '',
+    sender_country: 'United States',
+    recipient_name: '',
+    recipient_email: '',
+    recipient_phone: '',
+    recipient_address: '',
+    recipient_country: 'United States',
+    courier_partner: 'Swift Line Express',
+    service_type: 'EXPRESS_AIR',
+    weight_kg: 1.0,
+    dimensions_cm: '30x20x15',
+    declared_value_usd: 100.0,
+    shipping_cost_usd: 29.5,
+    payment_status: 'PAID',
+    status: 'ORDER_CREATED',
+    origin: '',
+    destination: '',
+    current_location: '',
+    estimated_delivery: '',
+    notes: ''
+  });
+  const [editShipmentLoading, setEditShipmentLoading] = useState(false);
+  const [editShipmentError, setEditShipmentError] = useState('');
+
   // New Shipment Booking Form — defaults to logged-in client's credentials
   const [newShipmentForm, setNewShipmentForm] = useState({
     sender_name: user?.fullName || '',
@@ -497,6 +542,132 @@ export default function Dashboard({ lang = 'en', user, onLogin, onLogout }) {
     } catch (err) {
       console.error(err);
       alert('Error creating client');
+    }
+  };
+
+  // Open Edit User Modal
+  const openEditUser = (u) => {
+    setEditUserModal(u);
+    setEditUserError('');
+    setEditUserForm({
+      fullName: u.fullName || '',
+      email: u.email || '',
+      phone: u.phone || '',
+      companyName: u.companyName || '',
+      country: u.country || 'United States',
+      role: u.role || 'client',
+      isActive: u.isActive !== false,
+      password: ''
+    });
+  };
+
+  // Submit User Information Edit
+  const handleEditUserSubmit = async (e) => {
+    e.preventDefault();
+    if (!editUserModal) return;
+    setEditUserError('');
+    setEditUserLoading(true);
+
+    try {
+      const payload = {
+        fullName: editUserForm.fullName,
+        email: editUserForm.email,
+        phone: editUserForm.phone,
+        companyName: editUserForm.companyName,
+        country: editUserForm.country,
+        role: editUserForm.role,
+        isActive: editUserForm.isActive
+      };
+      if (editUserForm.password && editUserForm.password.trim()) {
+        payload.password = editUserForm.password.trim();
+      }
+
+      const res = await apiFetch(`/api/auth/users/${editUserModal.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        flashMessage(`User profile for "${data.user.fullName}" updated successfully.`);
+        setEditUserModal(null);
+        loadDashboardData();
+      } else {
+        setEditUserError(data.error || 'Failed to update user profile.');
+      }
+    } catch (err) {
+      console.error(err);
+      setEditUserError('Unable to connect to server. Please try again.');
+    } finally {
+      setEditUserLoading(false);
+    }
+  };
+
+  // Open Edit Shipment Modal
+  const openEditShipment = (shp) => {
+    setEditShipmentError('');
+    setEditShipmentModal(shp);
+    setEditShipmentForm({
+      sender_name: shp.sender_name || '',
+      sender_email: shp.sender_email || '',
+      sender_phone: shp.sender_phone || '',
+      sender_address: shp.sender_address || '',
+      sender_country: shp.sender_country || shp.origin || 'United States',
+      recipient_name: shp.recipient_name || '',
+      recipient_email: shp.recipient_email || '',
+      recipient_phone: shp.recipient_phone || '',
+      recipient_address: shp.recipient_address || '',
+      recipient_country: shp.recipient_country || shp.destination || 'United States',
+      courier_partner: shp.courier_partner || 'Swift Line Express',
+      service_type: shp.service_type || 'EXPRESS_AIR',
+      weight_kg: shp.weight_kg ?? 1.0,
+      dimensions_cm: shp.dimensions_cm || '30x20x15',
+      declared_value_usd: shp.declared_value_usd ?? 100.0,
+      shipping_cost_usd: shp.shipping_cost_usd ?? 29.5,
+      payment_status: shp.payment_status || 'PAID',
+      status: shp.status || 'ORDER_CREATED',
+      origin: shp.origin || shp.sender_country || '',
+      destination: shp.destination || shp.recipient_country || '',
+      current_location: shp.current_location || '',
+      estimated_delivery: shp.estimated_delivery ? shp.estimated_delivery.split('T')[0] : '',
+      notes: shp.notes || ''
+    });
+  };
+
+  // Submit Shipment Details Edit
+  const handleEditShipmentSubmit = async (e) => {
+    e.preventDefault();
+    if (!editShipmentModal) return;
+    setEditShipmentError('');
+    setEditShipmentLoading(true);
+
+    try {
+      const res = await apiFetch(`/api/shipments/${editShipmentModal.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(editShipmentForm)
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        flashMessage(`Shipment ${editShipmentModal.tracking_number} updated successfully.`);
+        setEditShipmentModal(null);
+        loadDashboardData();
+      } else {
+        setEditShipmentError(data.error || 'Failed to update shipment.');
+      }
+    } catch (err) {
+      console.error(err);
+      setEditShipmentError('Server communication error. Please try again.');
+    } finally {
+      setEditShipmentLoading(false);
     }
   };
 
@@ -1125,6 +1296,17 @@ export default function Dashboard({ lang = 'en', user, onLogin, onLogout }) {
                             </button>
                           )}
 
+                          {/* Edit Shipment Info for Admin / SuperAdmin */}
+                          {(user.role === 'superadmin' || (user.role === 'admin' && hasPerm('manage_shipments'))) && (
+                            <button
+                              onClick={() => openEditShipment(shp)}
+                              className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] transition-colors"
+                              title="Edit Shipment Details"
+                            >
+                              <Edit className="w-3.5 h-3.5 inline mr-1" /> Edit Info
+                            </button>
+                          )}
+
                           {/* Status Updater for Admin / SuperAdmin */}
                           {(user.role === 'superadmin' || (user.role === 'admin' && hasPerm('update_status'))) && (
                             <button
@@ -1363,17 +1545,28 @@ export default function Dashboard({ lang = 'en', user, onLogin, onLogout }) {
                             <span className="text-xs text-slate-500 ml-2">({adminUser.email})</span>
                           </div>
                           
-                          {/* Role Badge and Return to Client Action */}
+                          {/* Role Badge and Actions */}
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-[10px] font-extrabold px-2.5 py-1 rounded bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200 uppercase">
                               Role: {adminUser.role}
                             </span>
 
+                            {/* Edit Admin Information Button */}
+                            <button
+                              type="button"
+                              onClick={() => openEditUser(adminUser)}
+                              className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                              title="Edit admin profile and credentials"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                              <span>Edit Info</span>
+                            </button>
+
                             {/* Prominent Return to Client Button */}
                             <button
                               type="button"
                               onClick={() => handleChangeRole(adminUser.id, 'client')}
-                              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+                              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                               title="Demote this admin back to a regular client"
                             >
                               <UserMinus className="w-3.5 h-3.5" />
@@ -1384,7 +1577,7 @@ export default function Dashboard({ lang = 'en', user, onLogin, onLogout }) {
                             <select
                               value={adminUser.role}
                               onChange={(e) => handleChangeRole(adminUser.id, e.target.value)}
-                              className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-bold focus:ring-2 focus:ring-[#FF6B00]"
+                              className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-bold focus:ring-2 focus:ring-[#FF6B00] cursor-pointer"
                             >
                               <option value="admin">Role: Admin</option>
                               <option value="client">Demote to Client</option>
@@ -1445,7 +1638,7 @@ export default function Dashboard({ lang = 'en', user, onLogin, onLogout }) {
                       <th className="py-3 px-3">Email</th>
                       <th className="py-3 px-3">Company / Country</th>
                       <th className="py-3 px-3">Assigned Admin</th>
-                      {user.role === 'superadmin' && <th className="py-3 px-3 text-right">Role Actions</th>}
+                      <th className="py-3 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-semibold">
@@ -1484,23 +1677,31 @@ export default function Dashboard({ lang = 'en', user, onLogin, onLogout }) {
                               </span>
                             )}
                           </td>
-                          {user.role === 'superadmin' && (
-                            <td className="py-4 px-3 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 uppercase">
-                                  Client
-                                </span>
+                          <td className="py-4 px-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {/* Edit Client Information */}
+                              <button
+                                type="button"
+                                onClick={() => openEditUser(client)}
+                                className="px-2.5 py-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-xs font-bold rounded-lg inline-flex items-center gap-1 border border-blue-200 dark:border-blue-800 transition-all cursor-pointer"
+                                title="Edit client profile and credentials"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                                <span>Edit Info</span>
+                              </button>
+
+                              {user.role === 'superadmin' && (
                                 <button
                                   onClick={() => handleChangeRole(client.id, 'admin')}
-                                  className="px-2.5 py-1.5 bg-[#0F2C59] hover:bg-[#1B4B8A] text-white text-xs font-bold rounded-lg inline-flex items-center gap-1 shadow-sm transition-all"
+                                  className="px-2.5 py-1.5 bg-[#0F2C59] hover:bg-[#1B4B8A] text-white text-xs font-bold rounded-lg inline-flex items-center gap-1 shadow-sm transition-all cursor-pointer"
                                   title="Promote this client to admin"
                                 >
                                   <UserPlus className="w-3.5 h-3.5" />
-                                  <span>Promote to Admin</span>
+                                  <span>Promote</span>
                                 </button>
-                              </div>
-                            </td>
-                          )}
+                              )}
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
@@ -1819,6 +2020,478 @@ export default function Dashboard({ lang = 'en', user, onLogin, onLogout }) {
                     className="px-4 py-2 rounded-xl bg-purple-600 text-white font-bold text-xs shadow hover:bg-purple-700"
                   >
                     Create Client
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* EDIT USER INFORMATION MODAL (SUPER ADMIN & AUTHORIZED ADMINS) */}
+        {editUserModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 border border-slate-700">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center">
+                    <Edit className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-[#0F2C59] dark:text-white">Edit User Information</h3>
+                    <p className="text-[11px] text-slate-500">Updating profile for {editUserModal.email}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditUserModal(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {editUserError && (
+                <div className="p-3 rounded-xl bg-red-50 text-red-600 text-xs font-semibold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{editUserError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleEditUserSubmit} className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold block mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={editUserForm.fullName}
+                      onChange={(e) => setEditUserForm({ ...editUserForm, fullName: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700 font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold block mb-1">Email Address</label>
+                    <input
+                      type="email"
+                      required
+                      value={editUserForm.email}
+                      onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700 font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold block mb-1">Phone Number</label>
+                    <input
+                      type="text"
+                      value={editUserForm.phone}
+                      onChange={(e) => setEditUserForm({ ...editUserForm, phone: e.target.value })}
+                      placeholder="+1 (555) 000-0000"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold block mb-1">Company / Organization</label>
+                    <input
+                      type="text"
+                      value={editUserForm.companyName}
+                      onChange={(e) => setEditUserForm({ ...editUserForm, companyName: e.target.value })}
+                      placeholder="e.g. Apex Global Trading"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold block mb-1">Country</label>
+                    <input
+                      type="text"
+                      value={editUserForm.country}
+                      onChange={(e) => setEditUserForm({ ...editUserForm, country: e.target.value })}
+                      placeholder="United States"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700"
+                    />
+                  </div>
+
+                  {user.role === 'superadmin' ? (
+                    <div>
+                      <label className="text-xs font-bold block mb-1">Assigned Role</label>
+                      <select
+                        value={editUserForm.role}
+                        onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700 font-bold"
+                      >
+                        <option value="client">Client</option>
+                        <option value="admin">Admin</option>
+                        <option value="superadmin">Super Admin</option>
+                      </select>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="text-xs font-bold block mb-1">Role</label>
+                      <input
+                        type="text"
+                        disabled
+                        value={editUserForm.role.toUpperCase()}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs border border-slate-200 dark:border-slate-700 font-bold text-slate-500"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {user.role === 'superadmin' && (
+                  <div>
+                    <label className="text-xs font-bold block mb-1">Account Status</label>
+                    <select
+                      value={editUserForm.isActive ? 'active' : 'suspended'}
+                      onChange={(e) => setEditUserForm({ ...editUserForm, isActive: e.target.value === 'active' })}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700 font-bold"
+                    >
+                      <option value="active">Active (Access Allowed)</option>
+                      <option value="suspended">Suspended / Inactive (Login Blocked)</option>
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-xs font-bold block mb-1">
+                    Reset Password <span className="text-[10px] text-slate-400 font-normal">(Optional — leave blank to keep current)</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={editUserForm.password}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, password: e.target.value })}
+                    placeholder="Enter new password (min. 6 chars)"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setEditUserModal(null)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editUserLoading}
+                    className="px-5 py-2.5 rounded-xl bg-[#0F2C59] hover:bg-[#1A4384] text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{editUserLoading ? 'Saving...' : 'Save User Changes'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* EDIT SHIPMENT MODAL */}
+        {editShipmentModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 border border-slate-200 dark:border-slate-800 max-h-[92vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div>
+                  <h3 className="font-extrabold text-lg text-[#0F2C59] dark:text-white flex items-center gap-2">
+                    <Edit className="w-5 h-5 text-blue-600" />
+                    <span>Edit Shipment Information</span>
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Tracking #: <span className="font-mono font-bold text-[#FF6B00]">{editShipmentModal.tracking_number}</span>
+                  </p>
+                </div>
+                <button
+                  onClick={() => setEditShipmentModal(null)}
+                  className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {editShipmentError && (
+                <div className="p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-xs font-semibold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{editShipmentError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleEditShipmentSubmit} className="space-y-4">
+                {/* 1. SENDER DETAILS */}
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                  <span className="text-[11px] font-bold text-[#FF6B00] uppercase tracking-wider block">1. Sender Information</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Sender Full Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={editShipmentForm.sender_name}
+                        onChange={(e) => setEditShipmentForm({ ...editShipmentForm, sender_name: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Sender Email</label>
+                      <input
+                        type="email"
+                        required
+                        value={editShipmentForm.sender_email}
+                        onChange={(e) => setEditShipmentForm({ ...editShipmentForm, sender_email: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Sender Phone</label>
+                      <input
+                        type="text"
+                        value={editShipmentForm.sender_phone}
+                        onChange={(e) => setEditShipmentForm({ ...editShipmentForm, sender_phone: e.target.value })}
+                        placeholder="+1 555-0199"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Sender Country / Origin</label>
+                      <input
+                        type="text"
+                        required
+                        value={editShipmentForm.sender_country}
+                        onChange={(e) => setEditShipmentForm({ ...editShipmentForm, sender_country: e.target.value, origin: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Sender Full Address</label>
+                    <input
+                      type="text"
+                      value={editShipmentForm.sender_address}
+                      onChange={(e) => setEditShipmentForm({ ...editShipmentForm, sender_address: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700"
+                    />
+                  </div>
+                </div>
+
+                {/* 2. RECIPIENT DETAILS */}
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                  <span className="text-[11px] font-bold text-[#FF6B00] uppercase tracking-wider block">2. Recipient Information</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Recipient Full Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={editShipmentForm.recipient_name}
+                        onChange={(e) => setEditShipmentForm({ ...editShipmentForm, recipient_name: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Recipient Email</label>
+                      <input
+                        type="email"
+                        required
+                        value={editShipmentForm.recipient_email}
+                        onChange={(e) => setEditShipmentForm({ ...editShipmentForm, recipient_email: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Recipient Phone</label>
+                      <input
+                        type="text"
+                        value={editShipmentForm.recipient_phone}
+                        onChange={(e) => setEditShipmentForm({ ...editShipmentForm, recipient_phone: e.target.value })}
+                        placeholder="+1 555-0244"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Recipient Country / Destination</label>
+                      <input
+                        type="text"
+                        required
+                        value={editShipmentForm.recipient_country}
+                        onChange={(e) => setEditShipmentForm({ ...editShipmentForm, recipient_country: e.target.value, destination: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Recipient Full Address</label>
+                    <input
+                      type="text"
+                      value={editShipmentForm.recipient_address}
+                      onChange={(e) => setEditShipmentForm({ ...editShipmentForm, recipient_address: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700"
+                    />
+                  </div>
+                </div>
+
+                {/* 3. PACKAGE & LOGISTICS DETAILS */}
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                  <span className="text-[11px] font-bold text-[#FF6B00] uppercase tracking-wider block">3. Package & Logistics Details</span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Carrier Network</label>
+                      <select
+                        value={editShipmentForm.courier_partner}
+                        onChange={(e) => setEditShipmentForm({ ...editShipmentForm, courier_partner: e.target.value })}
+                        className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700 font-bold"
+                      >
+                        <option value="Swift Line Express">Swift Line Express</option>
+                        <option value="DHL Express">DHL Express</option>
+                        <option value="FedEx World Express">FedEx World Express</option>
+                        <option value="UPS Worldwide Saver">UPS Worldwide Saver</option>
+                        <option value="Aramex Global">Aramex Global</option>
+                        <option value="Maersk Logistics Ocean">Maersk Ocean Line</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Service Type</label>
+                      <select
+                        value={editShipmentForm.service_type}
+                        onChange={(e) => setEditShipmentForm({ ...editShipmentForm, service_type: e.target.value })}
+                        className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700 font-bold"
+                      >
+                        <option value="EXPRESS_AIR">Express Air</option>
+                        <option value="STANDARD_GROUND">Standard Ground</option>
+                        <option value="OCEAN_FREIGHT">Ocean Freight</option>
+                        <option value="PRIORITY_DOC">Priority Document</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Weight (KG)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        required
+                        value={editShipmentForm.weight_kg}
+                        onChange={(e) => setEditShipmentForm({ ...editShipmentForm, weight_kg: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700 font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Dimensions (LxWxH)</label>
+                      <input
+                        type="text"
+                        value={editShipmentForm.dimensions_cm}
+                        onChange={(e) => setEditShipmentForm({ ...editShipmentForm, dimensions_cm: e.target.value })}
+                        placeholder="30x20x15"
+                        className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700 font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Declared Value ($ USD)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editShipmentForm.declared_value_usd}
+                        onChange={(e) => setEditShipmentForm({ ...editShipmentForm, declared_value_usd: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700 font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Shipping Cost ($ USD)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editShipmentForm.shipping_cost_usd}
+                        onChange={(e) => setEditShipmentForm({ ...editShipmentForm, shipping_cost_usd: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700 font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Payment Status</label>
+                      <select
+                        value={editShipmentForm.payment_status}
+                        onChange={(e) => setEditShipmentForm({ ...editShipmentForm, payment_status: e.target.value })}
+                        className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700 font-bold"
+                      >
+                        <option value="PAID">Paid</option>
+                        <option value="PENDING">Pending</option>
+                        <option value="REFUNDED">Refunded</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Shipment Status</label>
+                      <select
+                        value={editShipmentForm.status}
+                        onChange={(e) => setEditShipmentForm({ ...editShipmentForm, status: e.target.value })}
+                        className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700 font-bold text-[#FF6B00]"
+                      >
+                        <option value="ORDER_CREATED">Order Created</option>
+                        <option value="PICKED_UP">Picked Up</option>
+                        <option value="IN_TRANSIT">In Transit</option>
+                        <option value="CUSTOMS_HOLD">Customs Hold</option>
+                        <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
+                        <option value="DELIVERED">Delivered</option>
+                        <option value="EXCEPTION">Exception / On Hold</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Current Scan Location</label>
+                      <input
+                        type="text"
+                        value={editShipmentForm.current_location}
+                        onChange={(e) => setEditShipmentForm({ ...editShipmentForm, current_location: e.target.value })}
+                        placeholder="e.g. Frankfurt Hub Terminal 2"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Estimated Delivery Date</label>
+                      <input
+                        type="date"
+                        value={editShipmentForm.estimated_delivery}
+                        onChange={(e) => setEditShipmentForm({ ...editShipmentForm, estimated_delivery: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700 font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Internal Notes / Handling Instructions</label>
+                    <input
+                      type="text"
+                      value={editShipmentForm.notes}
+                      onChange={(e) => setEditShipmentForm({ ...editShipmentForm, notes: e.target.value })}
+                      placeholder="e.g. Fragile glass item, handle with utmost care"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-700"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setEditShipmentModal(null)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editShipmentLoading}
+                    className="px-5 py-2.5 rounded-xl bg-[#0F2C59] hover:bg-[#1A4384] text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{editShipmentLoading ? 'Saving...' : 'Save Shipment Changes'}</span>
                   </button>
                 </div>
               </form>

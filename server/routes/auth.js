@@ -446,4 +446,76 @@ router.put('/users/:id/role', authenticateToken, requireRole('superadmin'), asyn
   res.json({ message: 'User role updated successfully', user: safeUser(updated) });
 });
 
+// ─── 9. PUT /api/auth/users/:id (EDIT FULL USER PROFILE) ────────────────────
+router.put('/users/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { fullName, email, phone, companyName, country, role, isActive, password } = req.body;
+
+  // Authorization check
+  if (req.user.role !== 'superadmin') {
+    if (req.user.role === 'admin') {
+      const { data: adminUser } = await supabase.from('users').select('permissions').eq('id', req.user.id).single();
+      const hasPerm = adminUser?.permissions?.includes('manage_clients') || adminUser?.permissions?.includes('*');
+      if (!hasPerm) return res.status(403).json({ error: 'Permission denied: Requires "manage_clients" permission.' });
+
+      // Verify this client belongs to this admin
+      const { data: targetClient } = await supabase.from('users').select('id, assigned_admin_id, created_by_user_id').eq('id', id).single();
+      if (!targetClient || (targetClient.assigned_admin_id !== req.user.id && targetClient.created_by_user_id !== req.user.id)) {
+        return res.status(403).json({ error: 'Permission denied: You can only edit clients assigned to or created by you.' });
+      }
+    } else {
+      return res.status(403).json({ error: 'Permission denied: Only administrators can edit user information.' });
+    }
+  }
+
+  const { data: targetUser, error: findErr } = await supabase.from('users').select('*').eq('id', id).single();
+  if (findErr || !targetUser) return res.status(404).json({ error: 'User not found' });
+
+  const updates = {};
+  if (fullName !== undefined) updates.full_name = fullName.trim();
+  if (email !== undefined) {
+    const cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail !== targetUser.email.toLowerCase()) {
+      const { data: existing } = await supabase.from('users').select('id').ilike('email', cleanEmail).limit(1);
+      if (existing && existing.length > 0) return res.status(409).json({ error: 'Email already registered to another user.' });
+      updates.email = cleanEmail;
+    }
+  }
+  if (phone !== undefined) updates.phone = phone.trim();
+  if (companyName !== undefined) updates.company_name = companyName.trim();
+  if (country !== undefined) updates.country = country.trim();
+
+  // Role and active status can only be modified by SuperAdmin
+  if (req.user.role === 'superadmin') {
+    if (role && ['superadmin', 'admin', 'client'].includes(role)) {
+      updates.role = role;
+      if (role === 'superadmin') updates.permissions = ['*'];
+      else if (role === 'admin') updates.permissions = targetUser.permissions?.length ? targetUser.permissions : ['manage_shipments', 'update_status', 'manage_clients', 'print_documents'];
+      else if (role === 'client') updates.permissions = [];
+    }
+    if (typeof isActive === 'boolean') updates.is_active = isActive;
+  }
+
+  // Update password if provided
+  if (password && password.trim().length >= 6) {
+    const salt = await bcrypt.genSalt(10);
+    updates.password_hash = await bcrypt.hash(password.trim(), salt);
+  }
+
+  const { data: updated, error: updateErr } = await supabase
+    .from('users')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (updateErr) {
+    console.error('Update user error:', updateErr);
+    return res.status(500).json({ error: 'Failed to update user profile.' });
+  }
+
+  logSecurityEvent('USER_PROFILE_UPDATED', req, `Target ID: ${id} Edited by: ${req.user.email}`);
+  res.json({ message: 'User information updated successfully', user: safeUser(updated) });
+});
+
 export default router;
